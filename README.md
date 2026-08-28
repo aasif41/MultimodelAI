@@ -2,25 +2,46 @@
 
 Multimodal AI Application powered by React, Vite, Express, Groq API, and Hugging Face.
 
-## Features
-- AI-assisted multimodal interactions (text, images, vision)
-- Express.js backend integrating Groq and Hugging Face APIs
-- Fast React + Vite frontend
+## Project Structure
+```
+├── public/
+├── server/
+│   ├── middleware/
+│   ├── routes/
+│   ├── services/
+│   ├── .env.example
+│   ├── index.js
+│   └── package.json
+├── src/
+│   ├── api/
+│   ├── assets/
+│   ├── components/
+│   ├── hooks/
+│   ├── pages/
+│   ├── utils/
+│   ├── App.jsx
+│   └── main.jsx
+├── .env.example
+├── index.html
+├── package.json
+└── vite.config.js
+```
 
 ## Setup & Installation
 
-### 1. Backend Setup
+### 1. Server Setup
 ```bash
-cd multimodal-ai/server
+cd server
 npm install
-# Copy .env.example to .env and fill in your API keys
+# Copy .env.example to .env and configure your API keys
 cp .env.example .env
 npm start # or node index.js
 ```
 
-### 2. Frontend Setup
+### 2. Client Setup
 ```bash
-cd multimodal-ai
 npm install
+# Copy .env.example to .env
+cp .env.example .env
 npm run dev
 ```

@@ -1,34 +1,33 @@
-# Environment Variables & Secrets
+# Environment Variables
 .env
 .env.*
 *.env
 !.env.example
 
-# Dependencies
-node_modules/
-**/node_modules/
-
-# Build outputs
-dist/
-**/dist/
-dist-ssr/
-**/dist-ssr/
-*.local
-
-# Server uploads / temp files
-uploads/
-**/uploads/
-lint.txt
-**/lint.txt
-
 # Logs
-logs/
+logs
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
 
-# Editor & OS files
+# Dependencies
+node_modules
+**/node_modules
+
+# Build outputs
+dist
+dist-ssr
+*.local
+
+# Server uploads / temp files
+uploads
+**/uploads
+lint.txt
+
+# Editor directories and files
 .vscode/*
 !.vscode/extensions.json
 .idea
