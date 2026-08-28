@@ -3,9 +3,14 @@ const fs = require('fs');
 
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 // Vision model: supports images
-const GROQ_VISION_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct';
+const GROQ_VISION_MODEL = 'qwen/qwen3.6-27b';
 // Text model: fast text-only chat
-const GROQ_TEXT_MODEL = 'llama-3.1-8b-instant';
+const GROQ_TEXT_MODEL = 'openai/gpt-oss-20b';
+
+function cleanAIResponse(content) {
+  if (!content) return '';
+  return content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+}
 
 /**
  * Handles text-based chat using Groq API
@@ -35,10 +40,36 @@ async function chatWithAI(messages) {
         },
       }
     );
-    return response.data.choices[0].message.content;
+    return cleanAIResponse(response.data.choices[0].message.content);
   } catch (error) {
-    console.error('Error in Groq chat API:', error.response?.data || error.message);
-    throw new Error('Failed to get response from Groq AI.');
+    console.error('Primary text model failed, trying fallback:', error.response?.data || error.message);
+    try {
+      const fallbackRes = await axios.post(
+        GROQ_API_URL,
+        {
+          model: 'qwen/qwen3.6-27b',
+          messages: [
+            {
+              role: 'system',
+              content:
+                'You are a helpful, intelligent multi-modal assistant. Format your answers smartly using Markdown.',
+            },
+            ...messages,
+          ],
+          max_tokens: 1500,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+      return cleanAIResponse(fallbackRes.data.choices[0].message.content);
+    } catch (fallbackErr) {
+      console.error('Error in Groq chat API fallback:', fallbackErr.response?.data || fallbackErr.message);
+      throw new Error('Failed to get response from Groq AI.');
+    }
   }
 }
 
@@ -53,9 +84,9 @@ async function askImage(imagePath, question, mimeType) {
   try {
     return await callGroqVision(imagePath, question, mimeType, GROQ_VISION_MODEL);
   } catch (error) {
-    console.warn(`Primary vision model (${GROQ_VISION_MODEL}) failed. Retrying with fallback model (qwen/qwen3.6-27b)... Error details:`, error.message);
+    console.warn(`Primary vision model (${GROQ_VISION_MODEL}) failed. Retrying with fallback model (qwen/qwen3.8-27b)... Error details:`, error.message);
     try {
-      return await callGroqVision(imagePath, question, mimeType, 'qwen/qwen3.6-27b');
+      return await callGroqVision(imagePath, question, mimeType, 'qwen/qwen3.8-27b');
     } catch (fallbackError) {
       console.error('Fallback vision model also failed:', fallbackError.message);
       const errMsg = fallbackError.response?.data?.error?.message || fallbackError.message || 'Unknown error';
@@ -127,7 +158,7 @@ User's request: "${userQuestion}"`,
     }
   );
 
-  return response.data.choices[0].message.content;
+  return cleanAIResponse(response.data.choices[0].message.content);
 }
 
 module.exports = {
