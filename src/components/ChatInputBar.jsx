@@ -1,9 +1,15 @@
-import { useState, useRef, useEffect } from 'react';
-import { Send, Image as ImageIcon, FileVideo, Mic, Camera, X, Loader2 } from 'lucide-react';
+import { useState, useRef, useEffect, useImperativeHandle } from 'react';
+import { ArrowUp, Paperclip, FileVideo, Mic, Camera, X, Square } from 'lucide-react';
 import { useCamera } from '../hooks/useCamera';
 import { compressImage } from '../utils/imageCompressor';
 
-export default function ChatInputBar({ onSendMessage, isProcessing }) {
+export default function ChatInputBar({ 
+  onSendMessage, 
+  isProcessing, 
+  isStreaming,
+  onStopStreaming,
+  ref 
+}) {
   const [text, setText] = useState('');
   const [mediaFile, setMediaFile] = useState(null);
   const [mediaPreview, setMediaPreview] = useState(null);
@@ -11,8 +17,20 @@ export default function ChatInputBar({ onSendMessage, isProcessing }) {
   const [isCameraActive, setIsCameraActive] = useState(false);
   
   const fileInputRef = useRef(null);
+  const textareaRef = useRef(null);
   const { videoRef, startCamera, stopCamera, captureFrame } = useCamera();
   const recognitionRef = useRef(null);
+
+  // Expose imperative methods for suggestion chips
+  useImperativeHandle(ref, () => ({
+    setText: (val) => {
+      setText(val);
+      textareaRef.current?.focus();
+    },
+    focus: () => {
+      textareaRef.current?.focus();
+    }
+  }));
 
   // Handle Voice Recognition setup
   useEffect(() => {
@@ -27,8 +45,6 @@ export default function ChatInputBar({ onSendMessage, isProcessing }) {
           .map((result) => result[0].transcript)
           .join('');
         
-        // Only set text if result is final, otherwise you can show intermediate, but final is cleaner.
-        // For simplicity, we just inject text at the end when done
         if (event.results[0].isFinal) {
           setText((prev) => prev + (prev.length > 0 ? ' ' : '') + transcript);
         }
@@ -54,7 +70,7 @@ export default function ChatInputBar({ onSendMessage, isProcessing }) {
         recognitionRef.current.start();
         setIsRecording(true);
       } else {
-        alert("Voice recognition not supported in this browser.");
+        alert("Voice recognition is not supported in this browser.");
       }
     }
   };
@@ -72,7 +88,6 @@ export default function ChatInputBar({ onSendMessage, isProcessing }) {
   const takePhoto = async () => {
     const dataUrl = captureFrame();
     if (dataUrl) {
-      // Convert data url to file object
       try {
         const res = await fetch(dataUrl);
         const blob = await res.blob();
@@ -80,7 +95,7 @@ export default function ChatInputBar({ onSendMessage, isProcessing }) {
         const compressedFile = await compressImage(file);
         const previewUrl = URL.createObjectURL(compressedFile);
         handleFileAttachment(compressedFile, previewUrl);
-        handleCameraToggle(); // Turn off camera
+        handleCameraToggle();
       } catch (err) {
         console.error("Failed to capture and compress camera image:", err);
       }
@@ -134,66 +149,76 @@ export default function ChatInputBar({ onSendMessage, isProcessing }) {
   };
 
   return (
-    <div className="relative w-full max-w-4xl mx-auto px-4 pb-6">
+    <div className="relative w-full max-w-3xl mx-auto px-4 pb-6">
       
       {/* Camera Overlay */}
       {isCameraActive && (
-        <div className="absolute bottom-full left-0 mb-4 p-3 bg-[#13141a]/95 rounded-2xl border border-white/10 shadow-2xl overflow-hidden animate-in slide-in-from-bottom-2 z-30 backdrop-blur-lg">
-          <div className="flex justify-between items-center mb-2.5 px-1 text-xs font-semibold text-gray-400">
-            <span className="flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-purple-500 animate-ping" />
-              Webcam Feed Active
+        <div className="absolute bottom-full left-4 right-4 sm:left-auto sm:right-4 mb-3 p-3 bg-[#26242C] rounded-2xl border border-white/[0.1] shadow-2xl z-30">
+          <div className="flex justify-between items-center mb-2 px-1 text-xs text-[#A6A2AE]">
+            <span className="flex items-center gap-1.5 font-medium text-[#EDEAE3]">
+              <span className="h-2 w-2 rounded-full bg-[#C97B4A]" />
+              Webcam Live
             </span>
-            <button onClick={handleCameraToggle} className="text-gray-400 hover:text-white p-0.5 hover:bg-white/5 rounded-lg transition-colors"><X size={16} /></button>
+            <button 
+              onClick={handleCameraToggle} 
+              className="text-[#A6A2AE] hover:text-[#EDEAE3] p-1 rounded-md hover:bg-white/[0.06] transition-colors"
+              aria-label="Close camera"
+            >
+              <X size={15} />
+            </button>
           </div>
           <video 
             ref={videoRef} 
-            className="w-80 h-auto rounded-xl bg-black object-cover aspect-video border border-white/5" 
+            className="w-full sm:w-80 h-auto rounded-xl bg-black object-cover aspect-video border border-white/[0.08]" 
             autoPlay playsInline muted
           />
           <button 
             onClick={takePhoto}
-            className="w-full mt-3 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 rounded-xl text-white text-xs font-bold transition-all shadow-md active:scale-[0.98]"
+            className="w-full mt-2.5 py-2 bg-[#C97B4A] hover:bg-[#DA8E5D] text-white text-xs font-semibold rounded-xl transition-colors cursor-pointer"
           >
             Capture Photo
           </button>
         </div>
       )}
 
-      {/* Input Container */}
-      <div className="bg-[#13141a]/85 border border-white/10 rounded-3xl p-3.5 flex flex-col shadow-2xl transition-all focus-within:border-purple-500/40 focus-within:shadow-[0_0_25px_rgba(139,92,246,0.12)] ring-1 ring-white/5">
+      {/* Main Composer Box */}
+      <div className="bg-[#26242C] border border-white/[0.08] rounded-2xl p-3 flex flex-col shadow-lg transition-all focus-within:border-[#C97B4A] focus-within:ring-1 focus-within:ring-[#C97B4A]">
         
-        {/* Attachments Preview Area */}
+        {/* Attachment Thumbnail */}
         {mediaPreview && (
-          <div className="mb-3 relative inline-block w-fit group-preview">
+          <div className="mb-2 relative inline-block w-fit">
             {mediaFile?.type.startsWith('video') ? (
-              <div className="w-48 h-32 bg-black rounded-xl overflow-hidden flex items-center justify-center border border-white/10 shadow-lg relative">
-                <FileVideo className="w-10 h-10 text-purple-400" />
-                <span className="absolute bottom-1 right-2 text-[10px] bg-black/60 px-2 py-0.5 rounded-md text-white font-mono font-semibold">Video</span>
+              <div className="w-40 h-24 bg-[#1D1C22] rounded-lg overflow-hidden flex items-center justify-center border border-white/[0.08] relative">
+                <FileVideo className="w-8 h-8 text-[#A6A2AE]" />
+                <span className="absolute bottom-1 right-1.5 text-[9px] bg-black/70 px-1.5 py-0.5 rounded text-[#EDEAE3] font-mono">Video</span>
               </div>
             ) : (
-              <img src={mediaPreview} alt="attachment" className="w-48 h-auto rounded-xl border border-white/10 max-h-48 object-cover shadow-lg" />
+              <img src={mediaPreview} alt="attachment" className="w-36 h-auto rounded-lg border border-white/[0.08] max-h-36 object-cover" />
             )}
             <button 
               onClick={clearAttachment}
-              className="absolute -top-2 -right-2 bg-red-500/90 hover:bg-red-500 text-white rounded-full p-1 shadow-lg transition-all hover:scale-105"
+              className="absolute -top-1.5 -right-1.5 bg-[#D9695F] hover:bg-[#c7584e] text-white rounded-full p-1 shadow transition-transform hover:scale-110"
+              aria-label="Remove attachment"
             >
-              <X className="w-3.5 h-3.5" />
+              <X className="w-3 h-3" />
             </button>
           </div>
         )}
 
+        {/* Textarea */}
         <textarea
+          ref={textareaRef}
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Message Multimodal AI..."
-          className="w-full bg-transparent text-gray-100 placeholder-gray-500 outline-none resize-none max-h-48 overflow-y-auto px-2 py-1.5 text-sm md:text-base leading-relaxed"
+          placeholder="Ask Space anything..."
+          className="w-full bg-transparent text-[#EDEAE3] placeholder-[#716D7A] outline-none resize-none max-h-48 overflow-y-auto px-1 py-1 text-sm md:text-base leading-relaxed font-sans"
           rows={Math.min(Math.max(text.split('\n').length, 1), 6)}
         />
 
-        <div className="flex items-center justify-between mt-3 px-1 border-t border-white/[0.03] pt-2.5">
-          <div className="flex items-center gap-1.5">
+        {/* Composer Toolbar */}
+        <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/[0.04]">
+          <div className="flex items-center gap-1">
             <input 
               type="file" 
               className="hidden" 
@@ -201,48 +226,75 @@ export default function ChatInputBar({ onSendMessage, isProcessing }) {
               onChange={handleFileChange}
               accept="image/*,video/*"
             />
-            {/* Attach File Button */}
+            
+            {/* Flat Neutral Action Buttons */}
             <button 
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="p-2 text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10 rounded-xl transition-all"
-              title="Attach File"
+              className="p-1.5 text-[#A6A2AE] hover:text-[#EDEAE3] hover:bg-white/[0.06] rounded-lg transition-colors"
+              title="Attach media"
+              aria-label="Attach media"
             >
-              <ImageIcon className="w-4.5 h-4.5" />
+              <Paperclip className="w-4 h-4" />
             </button>
 
-            {/* Camera Button */}
             <button 
               type="button"
               onClick={handleCameraToggle}
-              className={`p-2 rounded-xl transition-all ${isCameraActive ? 'text-purple-400 bg-purple-500/20 shadow-inner' : 'text-purple-400 hover:text-purple-300 hover:bg-purple-500/10'}`}
-              title="Camera"
+              className={`p-1.5 rounded-lg transition-colors ${
+                isCameraActive 
+                  ? 'text-[#C97B4A] bg-[#C97B4A]/10' 
+                  : 'text-[#A6A2AE] hover:text-[#EDEAE3] hover:bg-white/[0.06]'
+              }`}
+              title="Camera capture"
+              aria-label="Toggle camera"
             >
-              <Camera className="w-4.5 h-4.5" />
+              <Camera className="w-4 h-4" />
             </button>
 
-            {/* Mic Button */}
             <button 
               type="button"
               onClick={handleMicClick}
-              className={`p-2 rounded-xl transition-all ${isRecording ? 'text-rose-400 bg-rose-500/20 animate-pulse shadow-inner' : 'text-rose-400 hover:text-rose-300 hover:bg-rose-500/10'}`}
-              title="Voice Dictation"
+              className={`flex items-center gap-1 p-1.5 rounded-lg transition-colors ${
+                isRecording 
+                  ? 'text-[#D9695F] bg-[#D9695F]/10' 
+                  : 'text-[#A6A2AE] hover:text-[#EDEAE3] hover:bg-white/[0.06]'
+              }`}
+              title="Voice input"
+              aria-label="Voice input"
             >
-              <Mic className="w-4.5 h-4.5" />
+              <Mic className="w-4 h-4" />
+              {isRecording && <span className="w-1.5 h-1.5 rounded-full bg-[#D9695F] animate-ping" />}
             </button>
           </div>
 
-          <button
-            onClick={handleSubmit}
-            disabled={(!text.trim() && !mediaFile) || isProcessing}
-            className="p-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white disabled:from-[#1b1c24] disabled:to-[#1b1c24] disabled:text-gray-600 rounded-xl transition-all hover:scale-[1.05] active:scale-[0.98] shadow-md disabled:shadow-none hover:shadow-[0_0_15px_rgba(124,58,237,0.3)] cursor-pointer disabled:cursor-not-allowed"
-          >
-            {isProcessing ? <Loader2 className="w-4 h-4 animate-spin text-gray-400" /> : <Send className="w-4 h-4" />}
-          </button>
+          {/* Send or Stop Generation Button */}
+          {isStreaming ? (
+            <button
+              type="button"
+              onClick={onStopStreaming}
+              className="p-2 bg-[#1D1C22] hover:bg-[#2C2A33] text-[#EDEAE3] border border-white/[0.1] rounded-xl transition-colors cursor-pointer"
+              title="Stop generating"
+              aria-label="Stop generating"
+            >
+              <Square className="w-3.5 h-3.5 fill-current" />
+            </button>
+          ) : (
+            <button
+              onClick={handleSubmit}
+              disabled={(!text.trim() && !mediaFile) || isProcessing}
+              className="p-2 bg-[#C97B4A] hover:bg-[#DA8E5D] text-white disabled:bg-[#1D1C22] disabled:text-[#716D7A] rounded-xl transition-colors cursor-pointer disabled:cursor-not-allowed"
+              title="Send prompt"
+              aria-label="Send prompt"
+            >
+              <ArrowUp className="w-4 h-4 stroke-[2.5]" />
+            </button>
+          )}
         </div>
 
       </div>
-      <div className="text-center mt-3 text-[10px] text-gray-500 cursor-default tracking-wide">
+
+      <div className="text-center mt-2.5 text-[11px] text-[#716D7A] cursor-default tracking-wide">
         AI can make mistakes. Consider verifying important information.
       </div>
     </div>

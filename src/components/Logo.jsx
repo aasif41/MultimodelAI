@@ -1,0 +1,17 @@
+export default function Logo({ className = "w-6 h-6" }) {
+  return (
+    <svg 
+      viewBox="0 0 32 32" 
+      fill="none" 
+      xmlns="http://www.w3.org/2000/svg" 
+      className={`shrink-0 ${className}`}
+      aria-label="Space Monogram"
+    >
+      <rect width="32" height="32" rx="7" fill="#C97B4A" />
+      <path 
+        d="M21.5 13.2C21.5 11.2 19.8 9.5 16.5 9.5C13 9.5 10.8 11.2 10.5 13.5H13.8C14 12.5 14.8 11.8 16.5 11.8C18 11.8 18.8 12.4 18.8 13.3C18.8 14.2 18 14.6 16.2 15.1L14.2 15.6C11.5 16.3 10.2 17.7 10.2 20C10.2 22.3 12.2 24 16 24C19.8 24 22 22.2 22.2 19.8H18.9C18.7 21 17.8 21.7 16 21.7C14.2 21.7 13.4 21 13.4 20.1C13.4 19.1 14.2 18.6 16 18.2L18 17.7C20.5 17 21.5 15.5 21.5 13.2Z" 
+        fill="#17161B" 
+      />
+    </svg>
+  );
+}

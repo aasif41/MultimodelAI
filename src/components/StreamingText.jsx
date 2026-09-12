@@ -1,36 +1,58 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { ErrorBoundary } from './ErrorBoundary';
 
-export default function StreamingText({ content, speed = 12, onComplete, onIteration }) {
+export default function StreamingText({ content, speed = 12, onComplete, onIteration, isStopped }) {
   const [displayedText, setDisplayedText] = useState('');
+  const textRef = useRef('');
+  const onCompleteRef = useRef(onComplete);
+  const onIterationRef = useRef(onIteration);
+
+  // Keep callback refs fresh without re-triggering streaming interval
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+    onIterationRef.current = onIteration;
+  });
 
   useEffect(() => {
+    if (isStopped) {
+      if (onCompleteRef.current) {
+        onCompleteRef.current(textRef.current || content);
+      }
+      return;
+    }
+
     let currentIdx = 0;
-    // Split keeping whitespace tokens so spacing is correct
     const tokens = content.split(/(\s+)/);
     let accumulatedText = '';
     
     const interval = setInterval(() => {
       if (currentIdx >= tokens.length) {
         clearInterval(interval);
-        if (onComplete) onComplete();
+        if (onCompleteRef.current) {
+          onCompleteRef.current(accumulatedText);
+        }
       } else {
         accumulatedText += tokens[currentIdx];
+        textRef.current = accumulatedText;
         setDisplayedText(accumulatedText);
         currentIdx++;
-        if (onIteration) onIteration();
+        if (onIterationRef.current) {
+          onIterationRef.current();
+        }
       }
     }, speed);
 
     return () => clearInterval(interval);
-  }, [content, speed, onComplete, onIteration]);
+  }, [content, speed, isStopped]);
 
   return (
     <ErrorBoundary>
-      <div className="prose prose-invert max-w-none text-sm md:text-base leading-relaxed break-words markdown-body">
+      <div className="prose prose-invert max-w-none text-sm md:text-base leading-relaxed break-words markdown-body text-[#EDEAE3]">
         <ReactMarkdown>{displayedText}</ReactMarkdown>
-        <span className="inline-block w-1.5 h-4 ml-1 bg-purple-500 rounded animate-pulse align-middle" />
+        {!isStopped && (
+          <span className="inline-block w-1.5 h-4 ml-1 bg-[#C97B4A] rounded-xs animate-pulse align-middle" />
+        )}
       </div>
     </ErrorBoundary>
   );

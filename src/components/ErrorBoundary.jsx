@@ -16,7 +16,11 @@ export class ErrorBoundary extends React.Component {
 
   render() {
     if (this.state.hasError) {
-      return <div className="text-red-500 text-sm">Failed to render Markdown: {this.state.error?.message}</div>;
+      return (
+        <div className="text-[#FB7185] bg-[#FB7185]/10 border border-[#FB7185]/20 px-3.5 py-2.5 rounded-xl text-sm font-medium">
+          Failed to render Markdown: {this.state.error?.message}
+        </div>
+      );
     }
     return this.props.children;
   }
